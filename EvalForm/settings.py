@@ -24,8 +24,8 @@ SECRET_KEY = 'django-insecure-xks70w2)rg266mzvmi9vt4&9dsq4+f(%^sqc5q4v12fo5b-f6f
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
-ALLOWED_HOSTS = ['grader-predictor-nust.herokuapp.com', '127.0.0.1']
+'form-filler-nust.herokuapp.com'
+ALLOWED_HOSTS = ['form-filler-nust.herokuapp.com', '127.0.0.1']
 
 
 # Application definition
