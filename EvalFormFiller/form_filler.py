@@ -2,12 +2,10 @@ import re
 import requests
 import random
 import bs4
+import threading
 
 target = "https://qalam.nust.edu.pk/web/login"
-csrf = None
-token = None
-as_sfid = None
-as_fid = None
+
 
 def check_login_credentials(username, password):
     with requests.Session() as s:
@@ -28,16 +26,14 @@ def check_login_credentials(username, password):
 
 
 def main(username, password):
-    def fill_form(session, url):
-        global csrf, token, as_sfid, as_fid
+    def fill_form(session, url, csrf=None, token=None, as_sfid=None, as_fid=None, get_vals=False):
         res = session.get('https://qalam.nust.edu.pk' + url)
         soup = bs4.BeautifulSoup(res.content.decode('utf-8'), 'html.parser')
         if soup.find('h1', text='Thank you!'):
             return
-        if as_sfid is None:
+        if get_vals:
             as_sfid = soup.find('input', {'name': 'as_sfid'}).get('value')
             as_fid = soup.find('input', {'name': 'as_fid'}).get('value')
-        if csrf is None:
             csrf, token = \
                 re.findall(r'(?:<form.*\s.*?value=")(.*)(?:".*\s.*?value=")(.*)(?:")', res.content.decode('utf-8'))[0]
         submit_btn = soup.find('button', {'class': 'btn btn-primary', 'value': 'finish'})
@@ -52,7 +48,7 @@ def main(username, password):
         answer = random.choice(soup.find_all('input', {'type': 'radio'}))
         payload[answer.get('name')] = answer.get('value')
         session.post('https://qalam.nust.edu.pk' + url.replace('fill', 'submit'), data=payload)
-        fill_form(session, url)
+        fill_form(session, url, csrf, token, as_sfid, as_fid)
 
     with requests.Session() as s:
         page1 = s.get(target)
@@ -78,8 +74,11 @@ def main(username, password):
                         link = div.ul.li.a.get('href')
                         if link[:7] == "/survey":
                             links.append(link)
-        for link in links:
-            fill_form(s, link)
-            csrf = None
-            token = None
+        if len(links) == 0:
+            return
 
+        threads = [threading.Thread(target=fill_form, args=(s, link, None, None, None, None, True)) for link in links]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
