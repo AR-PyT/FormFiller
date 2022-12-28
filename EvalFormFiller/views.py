@@ -1,6 +1,5 @@
 from django.shortcuts import render
-import form_filler
-# from . import form_filler
+from EvalFormFiller import form_filler
 import threading
 
 # Create your views here.
