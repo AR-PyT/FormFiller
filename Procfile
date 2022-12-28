@@ -1,1 +1,1 @@
-web: gunicorn NUSTGradeCalc.wsgi --log-file -
+web: gunicorn EvalForm.wsgi --log-file -
