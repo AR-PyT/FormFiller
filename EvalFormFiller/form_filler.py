@@ -27,7 +27,7 @@ def check_login_credentials(username, password):
     return s
 
 
-def main(s: requests.Session):
+def main(username, password):
     def fill_form(session, url, csrf=None, token=None, as_sfid=None, as_fid=None, get_vals=False):
         res = session.get('https://qalam.nust.edu.pk' + url)
         soup = bs4.BeautifulSoup(res.content.decode('utf-8'), 'html.parser')
@@ -51,7 +51,9 @@ def main(s: requests.Session):
         payload[answer.get('name')] = answer.get('value')
         session.post('https://qalam.nust.edu.pk' + url.replace('fill', 'submit'), data=payload)
         fill_form(session, url, csrf, token, as_sfid, as_fid)
-
+    s = check_login_credentials(username, password)
+    if not s:
+        return
     eval_page = s.get("https://qalam.nust.edu.pk/student/qa/feedback")
 
     soup = bs4.BeautifulSoup(eval_page.content.decode('utf-8'), 'html.parser')
