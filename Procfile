@@ -1,1 +1,1 @@
-web: gunicorn EvalForm.wsgi --log-file -
+web: gunicorn EvalForm.wsgi --log-file - --timeout 250

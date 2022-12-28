@@ -8,26 +8,26 @@ target = "https://qalam.nust.edu.pk/web/login"
 
 
 def check_login_credentials(username, password):
-    with requests.Session() as s:
-        page1 = s.get(target)
-        token = re.search(r'(?:<input type="hidden" name="csrf_token" value=")(.*?)(?:")', str(page1.content))[1]
-        soup = bs4.BeautifulSoup(page1.content.decode('utf-8'), 'html.parser')
-        user_id, password = username, password
-        payload = {
-            "csrf_token": token,
-            "login": user_id,
-            "password": password,
-            "redirect": "",
-            "as_sfid": soup.find('input', {'name': 'as_sfid'}).get('value'),
-            "as_fid": soup.find('input', {'name': 'as_fid'}).get('value')
-        }
-        response = s.post(target, data=payload)
-        if response.status_code != 200:
-            return False
-        return True
+    s = requests.Session()
+    page1 = s.get(target)
+    token = re.search(r'(?:<input type="hidden" name="csrf_token" value=")(.*?)(?:")', str(page1.content))[1]
+    soup = bs4.BeautifulSoup(page1.content.decode('utf-8'), 'html.parser')
+    user_id, password = username, password
+    payload = {
+        "csrf_token": token,
+        "login": user_id,
+        "password": password,
+        "redirect": "",
+        "as_sfid": soup.find('input', {'name': 'as_sfid'}).get('value'),
+        "as_fid": soup.find('input', {'name': 'as_fid'}).get('value')
+    }
+    response = s.post(target, data=payload)
+    if response.status_code != 200:
+        return False
+    return s
 
 
-def main(username, password):
+def main(s: requests.Session):
     def fill_form(session, url, csrf=None, token=None, as_sfid=None, as_fid=None, get_vals=False):
         res = session.get('https://qalam.nust.edu.pk' + url)
         soup = bs4.BeautifulSoup(res.content.decode('utf-8'), 'html.parser')
@@ -52,35 +52,25 @@ def main(username, password):
         session.post('https://qalam.nust.edu.pk' + url.replace('fill', 'submit'), data=payload)
         fill_form(session, url, csrf, token, as_sfid, as_fid)
 
-    with requests.Session() as s:
-        page1 = s.get(target)
-        token = re.search(r'(?:<input type="hidden" name="csrf_token" value=")(.*?)(?:")', str(page1.content))[1]
+    eval_page = s.get("https://qalam.nust.edu.pk/student/qa/feedback")
 
-        user_id, password = username, password
-        payload = {
-            "csrf_token": token,
-            "login": user_id,
-            "password": password,
-            "redirect": ""
-        }
-        s.post(target, data=payload)
-        eval_page = s.get("https://qalam.nust.edu.pk/student/qa/feedback")
+    soup = bs4.BeautifulSoup(eval_page.content.decode('utf-8'), 'html.parser')
+    links = []
+    for div in soup.find_all('div'):
+        if div.ul and div.ul.li and div.ul.li.a:
+            li_last = div.find_all('li')[-1]
+            if li_last.div and li_last.div.span:
+                if li_last.div.span.text.strip() == "Not Submitted":
+                    link = div.ul.li.a.get('href')
+                    if link[:7] == "/survey":
+                        links.append(link)
+    if len(links) == 0:
+        return
 
-        soup = bs4.BeautifulSoup(eval_page.content.decode('utf-8'), 'html.parser')
-        links = []
-        for div in soup.find_all('div'):
-            if div.ul and div.ul.li and div.ul.li.a:
-                li_last = div.find_all('li')[-1]
-                if li_last.div and li_last.div.span:
-                    if li_last.div.span.text.strip() == "Not Submitted":
-                        link = div.ul.li.a.get('href')
-                        if link[:7] == "/survey":
-                            links.append(link)
-        if len(links) == 0:
-            return
+    threads = [threading.Thread(target=fill_form, args=(s, link, None, None, None, None, True)) for link in links]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
 
-        threads = [threading.Thread(target=fill_form, args=(s, link, None, None, None, None, True)) for link in links]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
+    s.close()
