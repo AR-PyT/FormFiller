@@ -11,13 +11,15 @@ def check_login_credentials(username, password):
     with requests.Session() as s:
         page1 = s.get(target)
         token = re.search(r'(?:<input type="hidden" name="csrf_token" value=")(.*?)(?:")', str(page1.content))[1]
-
+        soup = bs4.BeautifulSoup(page1.content.decode('utf-8'), 'html.parser')
         user_id, password = username, password
         payload = {
             "csrf_token": token,
             "login": user_id,
             "password": password,
-            "redirect": ""
+            "redirect": "",
+            "as_sfid": soup.find('input', {'name': 'as_sfid'}).get('value'),
+            "as_fid": soup.find('input', {'name': 'as_fid'}).get('value')
         }
         response = s.post(target, data=payload)
         if response.status_code != 200:
